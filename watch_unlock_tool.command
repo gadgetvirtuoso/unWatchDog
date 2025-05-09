@@ -19,7 +19,7 @@ while true; do
   echo "3️⃣  Reset trust chain and services"
   echo "4️⃣  Fix missing watch-companion trust chain"
   echo "5️⃣  Repair wizard (step-by-step user guidance)"
-  echo "6️⃣  Package logs for ChatGPT review"
+  echo "6️⃣  Package logs for review"
   echo "7️⃣  Quit"
   read -rp "Choose an option [1-7]: " choice
   echo ""
@@ -146,19 +146,62 @@ while true; do
       ;;
 
     6)
-      echo "📦 Packaging logs for upload..."
+      echo "📦 Where would you like to save the log archive?"
+      echo "1. Desktop"
+      echo "2. Downloads"
+      echo "3. Documents/unWatchDogLogs"
+      echo "4. Enter custom path"
+      
+      read -rp "Choose a location [1-4]: " location_choice
+      
+      case "$location_choice" in
+        1)
+          DEST="$HOME/Desktop"
+        ;;
+        2)
+          DEST="$HOME/Downloads"
+        ;;
+        3)
+          DEST="$HOME/Documents/unWatchDogLogs"
+          mkdir -p "$DEST"
+        ;;
+        4)
+          read -rp "Enter full path (e.g., /Users/you/MyFolder): " custom_path
+          if [ -d "$custom_path" ]; then
+            DEST="$custom_path"
+          else
+            echo "❗ Path doesn't exist. Creating it..."
+            mkdir -p "$custom_path"
+            if [ $? -eq 0 ]; then
+              DEST="$custom_path"
+            else
+              echo "❌ Failed to create directory. Defaulting to Downloads."
+              DEST="$HOME/Downloads"
+            fi
+          fi
+        ;;
+        *)
+          echo "⚠️ Invalid choice. Saving to Downloads."
+          DEST="$HOME/Downloads"
+        ;;
+      esac
+      
+      # Create temp folder and dump logs
       TMPDIR=$(mktemp -d)
       AUTOLOG="$TMPDIR/autounlock_state.log"
       BTLOG="$TMPDIR/bluetooth_awdl.log"
       TRUSTLIST="$TMPDIR/trust_file_listing.txt"
+      
       log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null > "$AUTOLOG"
       log show --predicate 'eventMessage CONTAINS "AWDL" OR eventMessage CONTAINS "bluetoothd"' --style syslog --last 1d 2>/dev/null > "$BTLOG"
-      ls -lah "$AUTO_UNLOCK_DIR" > "$TRUSTLIST" 2>/dev/null
-      ZIPFILE="$HOME/Downloads/auto_unlock_diagnostics_$(date +%Y-%m-%d).zip"
+      ls -lah "$HOME/Library/Sharing/AutoUnlock" > "$TRUSTLIST" 2>/dev/null
+      
+      # Zip and notify
+      ZIPFILE="$DEST/auto_unlock_diagnostics_$(date +%Y-%m-%d_%H%M%S).zip"
       zip -r "$ZIPFILE" "$TMPDIR" >/dev/null 2>&1
-      echo "✅ Logs saved to:"
-      echo "$ZIPFILE"
       rm -rf "$TMPDIR"
+      
+      echo "✅ Logs saved to: $ZIPFILE"
       ;;
 
     7)
