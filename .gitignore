@@ -1,0 +1,7 @@
+.DS_Store
+*.zip
+*.log
+*.plist
+__pycache__/
+*.command~
+*.swp
