@@ -36,53 +36,62 @@ while true; do
       ;;
 
     2)
-      echo "📊 Which logs would you like to analyze?"
-      echo "1. AutoUnlock state"
-      echo "2. Bluetooth + AWDL"
-      echo "3. Trust file check"
-      echo "4. All of the above"
-      read -rp "Select [1–4]: " log_choice
-      case "$log_choice" in
-        1)
-          echo "🔍 Fetching AutoUnlock state log..."
-          log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20
-          ;;
-        2)
-          echo "📡 Checking Bluetooth and AWDL logs..."
-          log show --predicate 'eventMessage CONTAINS "bluetoothd" OR eventMessage CONTAINS "AWDL"' --style syslog --last 1d 2>/dev/null | tail -n 50
-          ;;
-        3)
-          echo "📄 Checking trust files in: $AUTO_UNLOCK_DIR"
-          for file in "${NEEDED_FILES[@]}"; do
-            if [ -f "$AUTO_UNLOCK_DIR/$file" ]; then
-              echo "✅ Found: $file"
-            else
-              echo "❌ Missing: $file"
-            fi
-          done
-          ;;
-        4)
-          echo "⏳ Running full diagnostics... this may take 5–15 seconds."
-          sleep 1
-          echo "📄 Checking trust files in: $AUTO_UNLOCK_DIR"
-          for file in "${NEEDED_FILES[@]}"; do
-            if [ -f "$AUTO_UNLOCK_DIR/$file" ]; then
-              echo "✅ Found: $file"
-            else
-              echo "❌ Missing: $file"
-            fi
-          done
-          echo ""
-          echo "📡 Checking Bluetooth and AWDL logs..."
-          log show --predicate 'eventMessage CONTAINS "bluetoothd" OR eventMessage CONTAINS "AWDL"' --style syslog --last 1d 2>/dev/null | tail -n 50
-          echo ""
-          echo "🔍 Checking AutoUnlock state log..."
-          log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20
-          ;;
-        *)
-          echo "❌ Invalid selection."
-          ;;
-      esac
+      while true; do
+        echo ""
+        echo "🧪 Diagnostics Menu"
+        echo "1. AutoUnlock state logs"
+        echo "2. Bluetooth + AWDL logs"
+        echo "3. Trust file check"
+        echo "4. Run all diagnostics"
+        echo "5. Return to main menu"
+        read -rp "Select an option [1-5]: " log_choice
+        echo ""
+
+        case "$log_choice" in
+          1)
+            echo "🔍 AutoUnlock state logs:"
+            log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20
+            ;;
+          2)
+            echo "📡 Bluetooth + AWDL logs:"
+            log show --predicate 'eventMessage CONTAINS "bluetoothd" OR eventMessage CONTAINS "AWDL"' --style syslog --last 1d 2>/dev/null | tail -n 50
+            ;;
+          3)
+            echo "📂 Trust file check in $AUTO_UNLOCK_DIR:"
+            for file in "${NEEDED_FILES[@]}"; do
+              if [ -f "$AUTO_UNLOCK_DIR/$file" ]; then
+                echo "✅ Found: $file"
+              else
+                echo "❌ Missing: $file"
+              fi
+            done
+            ;;
+          4)
+            echo "⏳ Running full diagnostics..."
+            sleep 1
+            echo "📂 Trust files:"
+            for file in "${NEEDED_FILES[@]}"; do
+              if [ -f "$AUTO_UNLOCK_DIR/$file" ]; then
+                echo "✅ Found: $file"
+              else
+                echo "❌ Missing: $file"
+              fi
+            done
+            echo ""
+            echo "📡 Bluetooth + AWDL logs:"
+            log show --predicate 'eventMessage CONTAINS "bluetoothd" OR eventMessage CONTAINS "AWDL"' --style syslog --last 1d 2>/dev/null | tail -n 50
+            echo ""
+            echo "🔍 AutoUnlock state:"
+            log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20
+            ;;
+          5)
+            break
+            ;;
+          *)
+            echo "❌ Invalid option."
+            ;;
+        esac
+      done
       ;;
 
     3)
@@ -92,7 +101,7 @@ while true; do
       sudo pkill bluetoothd
 
       echo ""
-      echo "⚠️ loginwindow restart will log you out immediately!"
+      echo "⚠️ Restarting loginwindow will log you out immediately!"
       read -rp "Skip restarting loginwindow? (y/n): " skip_lw
       if [[ "$skip_lw" =~ ^[Nn]$ ]]; then
         echo "💡 Nudging loginwindow..."
@@ -106,12 +115,12 @@ while true; do
       ;;
 
     4)
-      echo "🛠 Steps to regenerate trust:"
+      echo "🛠 Manual fix steps:"
       echo "1. Disable Watch unlock in System Settings"
       echo "2. Sign out and back into iCloud"
       echo "3. Unpair and re-pair your Apple Watch"
-      echo "4. Re-enable Auto Unlock in Touch ID settings"
-      read -rp "⏳ Press Enter after trying these steps..." _
+      echo "4. Re-enable Auto Unlock"
+      read -rp "⏳ Press Enter when you've tried these..." _
       ;;
 
     5)
@@ -123,19 +132,19 @@ while true; do
       read -rp "Choose [1–4]: " step
       case "$step" in
         1) echo "↪️ Reboot, then re-enable Watch unlock in System Settings" ;;
-        2) echo "⚠️ Go to Apple ID > Sign Out, then reboot and sign back in" ;;
-        3) echo "📱 Unpair via iPhone → reboot Mac → re-pair Watch" ;;
+        2) echo "⚠️ Sign out of Apple ID in Settings, reboot, and sign back in" ;;
+        3) echo "📱 Unpair from iPhone → reboot Mac → re-pair Watch" ;;
         *) echo "❌ Cancelled." ;;
       esac
       ;;
 
     6)
-      echo "📦 Where do you want to save the log archive?"
+      echo "📦 Choose destination to save logs:"
       echo "1. Desktop"
       echo "2. Downloads"
       echo "3. Documents/unWatchDogLogs"
-      echo "4. Enter custom path"
-      read -rp "Choose [1–4]: " location_choice
+      echo "4. Custom path"
+      read -rp "Select [1–4]: " location_choice
 
       case "$location_choice" in
         1) DEST="$HOME/Desktop" ;;
@@ -156,27 +165,25 @@ while true; do
       cat <<EOF > "$TMPDIR/AI_analysis_instructions.txt"
 # Apple Watch Auto Unlock Diagnostic Log Analysis
 
-You are an advanced macOS system troubleshooting assistant. The following logs are from a Mac experiencing issues with the Auto Unlock feature using an Apple Watch. These logs include:
+You are an advanced macOS system troubleshooting assistant. These logs come from a Mac experiencing intermittent Auto Unlock failures. The set includes:
 
 - Trust file listing from ~/Library/Sharing/AutoUnlock
 - AutoUnlock state transitions from system.log
-- Bluetooth and AWDL activity logs
+- Bluetooth and AWDL logs
 
-Your tasks:
-1. Identify any missing or malformed trust artifacts that might block Auto Unlock.
-2. Look for Bluetooth or AWDL errors that would interrupt communication with the Watch.
-3. Explain whether the logs show a successful unlock attempt or failure.
-4. Provide specific suggestions based on the log evidence (not just generic fixes).
+Tasks:
+1. Identify missing or broken trust files
+2. Surface Bluetooth/AWDL issues impacting Watch pairing
+3. Determine whether unlocks are succeeding or failing
+4. Recommend fixes with supporting evidence
 
-You may assume that \`watch-companion-mapping.plist\` is deprecated and not required. Focus on \`ltk.plist\` and loginwindow/bluetoothd interactions.
-
-Be concise, specific, and actionable.
+Note: Ignore watch-companion-mapping.plist — it's deprecated. Focus on ltk.plist and the loginwindow/bluetoothd interaction.
 EOF
 
       ZIPFILE="$DEST/auto_unlock_diagnostics_$(date +%Y-%m-%d_%H%M%S).zip"
       zip -r "$ZIPFILE" "$TMPDIR" >/dev/null
       rm -rf "$TMPDIR"
-      echo "✅ Logs and prompt saved to: $ZIPFILE"
+      echo "✅ Logs + analysis prompt saved to: $ZIPFILE"
       ;;
 
     7)
