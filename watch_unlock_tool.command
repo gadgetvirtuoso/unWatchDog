@@ -21,10 +21,10 @@ function parse_local_auth_logs() {
     case "$line" in
       *kLAErrorAuthenticationFailed*) echo "❌ Authentication failed — Watch was present but not accepted." ;;
       *kLAErrorPasscodeNotSet*) echo "🔒 Apple Watch must have a passcode set for unlock to work." ;;
-      *No paired device*|*not paired*) echo "🔗 No Apple Watch found or it’s not paired correctly." ;;
+      *No\ paired\ device*|*not\ paired*) echo "🔗 No Apple Watch found or it’s not paired correctly." ;;
       *kLAErrorUserCancel*) echo "🚫 Unlock was cancelled by user or system (maybe screen lock interrupted it)." ;;
       *kLAErrorWatchNotAvailable*) echo "📴 Your Watch wasn't detected during the auth attempt." ;;
-      *Timed out*|*timeout*|*took too long*) echo "⏱️ Authentication timed out. Bluetooth or Watch response may be lagging." ;;
+      *Timed\ out*|*timeout*|*took\ too\ long*) echo "⏱️ Authentication timed out. Bluetooth or Watch response may be lagging." ;;
       *kLAErrorSystemCancel*) echo "❌ Authentication cancelled by system (possibly due to sleep/wake or logout)." ;;
       *kLAErrorAppCancel*) echo "🛑 App canceled the authentication — could be app-specific bug." ;;
       *kLAErrorInvalidContext*) echo "⚠️ Invalid auth context — may need to restart the app or log out and in." ;;
