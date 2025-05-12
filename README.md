@@ -4,7 +4,7 @@
 
 ---
 
-### 🔧 Features (v1.0.0)
+### 🔧 Features (v1.1.0)
 
 - Detects Auto Unlock failures and interprets system logs in plain English
 - Verifies `ltk.plist` trust file integrity
