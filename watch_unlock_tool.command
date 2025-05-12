@@ -21,7 +21,7 @@ while true; do
 
   case "$choice" in
     1)
-      echo "🔍 Checking recent AutoUnlock status logs..."
+      echo "🔍 Checking recent AutoUnlock state logs..."
       sleep 1
       log_output=$(log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20)
       [ "$VERBOSE" = true ] && echo "$log_output"
@@ -42,9 +42,10 @@ while true; do
         echo "1. AutoUnlock state logs"
         echo "2. Bluetooth + AWDL logs"
         echo "3. Trust file check"
-        echo "4. Run all diagnostics"
-        echo "5. Return to main menu"
-        read -rp "Select an option [1-5]: " log_choice
+        echo "4. 3rd-party app unlock logs"
+        echo "5. Run all diagnostics"
+        echo "6. Return to main menu"
+        read -rp "Select an option [1-6]: " log_choice
         echo ""
 
         case "$log_choice" in
@@ -67,7 +68,11 @@ while true; do
             done
             ;;
           4)
-            echo "⏳ Running full diagnostics..."
+            echo "🔍 Searching for 3rd-party app Apple Watch auth logs..."
+            log show --predicate 'eventMessage CONTAINS "LocalAuthentication" OR eventMessage CONTAINS "Apple Watch"' --style syslog --last 1d 2>/dev/null | grep -Ei "Watch|Auth|LAContext|kLAError" | tail -n 30
+            ;;
+          5)
+            echo "⏳ Running all diagnostics..."
             sleep 1
             echo "📂 Trust files:"
             for file in "${NEEDED_FILES[@]}"; do
@@ -78,13 +83,16 @@ while true; do
               fi
             done
             echo ""
-            echo "📡 Bluetooth + AWDL logs:"
+            echo "📡 Bluetooth logs:"
             log show --predicate 'eventMessage CONTAINS "bluetoothd" OR eventMessage CONTAINS "AWDL"' --style syslog --last 1d 2>/dev/null | tail -n 50
             echo ""
             echo "🔍 AutoUnlock state:"
             log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20
+            echo ""
+            echo "🔐 3rd-party app Watch unlock logs:"
+            log show --predicate 'eventMessage CONTAINS "LocalAuthentication" OR eventMessage CONTAINS "Apple Watch"' --style syslog --last 1d 2>/dev/null | grep -Ei "Watch|Auth|LAContext|kLAError" | tail -n 30
             ;;
-          5)
+          6)
             break
             ;;
           *)
@@ -160,30 +168,32 @@ while true; do
       TMPDIR=$(mktemp -d)
       log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d > "$TMPDIR/autounlock_state.log" 2>/dev/null
       log show --predicate 'eventMessage CONTAINS "AWDL" OR eventMessage CONTAINS "bluetoothd"' --style syslog --last 1d > "$TMPDIR/bluetooth_awdl.log" 2>/dev/null
+      log show --predicate 'eventMessage CONTAINS "LocalAuthentication" OR eventMessage CONTAINS "Apple Watch"' --style syslog --last 1d | grep -Ei "Watch|Auth|LAContext|kLAError" > "$TMPDIR/3rdparty_auth.log" 2>/dev/null
       ls -lah "$AUTO_UNLOCK_DIR" > "$TMPDIR/trust_file_listing.txt" 2>/dev/null
 
       cat <<EOF > "$TMPDIR/AI_analysis_instructions.txt"
-# Apple Watch Auto Unlock Diagnostic Log Analysis
+# Apple Watch Authentication Diagnostic Logs
 
-You are an advanced macOS system troubleshooting assistant. These logs come from a Mac experiencing intermittent Auto Unlock failures. The set includes:
+Analyze these logs to determine why Apple Watch unlock is failing on this Mac.
 
-- Trust file listing from ~/Library/Sharing/AutoUnlock
-- AutoUnlock state transitions from system.log
-- Bluetooth and AWDL logs
+Included:
+- Trust file listing
+- AutoUnlock system logs
+- Bluetooth/AWDL logs
+- 3rd-party app auth logs (via LocalAuthentication)
 
-Tasks:
-1. Identify missing or broken trust files
-2. Surface Bluetooth/AWDL issues impacting Watch pairing
-3. Determine whether unlocks are succeeding or failing
-4. Recommend fixes with supporting evidence
+Focus areas:
+- Whether ltk.plist is missing or malformed
+- Bluetooth/AWDL connection interruptions
+- Failed biometric auth attempts in apps
 
-Note: Ignore watch-companion-mapping.plist — it's deprecated. Focus on ltk.plist and the loginwindow/bluetoothd interaction.
+Suggest possible causes and solutions.
 EOF
 
       ZIPFILE="$DEST/auto_unlock_diagnostics_$(date +%Y-%m-%d_%H%M%S).zip"
       zip -r "$ZIPFILE" "$TMPDIR" >/dev/null
       rm -rf "$TMPDIR"
-      echo "✅ Logs + analysis prompt saved to: $ZIPFILE"
+      echo "✅ Logs + AI prompt saved to: $ZIPFILE"
       ;;
 
     7)
