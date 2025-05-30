@@ -36,6 +36,32 @@ function parse_local_auth_logs() {
   done
 }
 
+function summarize_autounlock_logs() {
+  log=$(log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 50)
+  echo "$log" | while read -r line; do
+    case "$line" in
+      *AutoUnlock\ state:0*) echo "🔄 State: 0 = Unknown" ;;
+      *AutoUnlock\ state:1*) echo "✅ State: 1 = Active (should be working)" ;;
+      *AutoUnlock\ state:2*) echo "🔐 State: 2 = Inactive — password required" ;;
+      *AutoUnlock\ state:3*) echo "🟢 State: 3 = Active" ;;
+      *) [[ "$VERBOSE" == true ]] && echo "🔹 $line" ;;
+    esac
+  done
+}
+
+function summarize_bluetooth_awdl_logs() {
+  log=$(log show --predicate 'eventMessage CONTAINS "bluetoothd" OR eventMessage CONTAINS "AWDL"' --style syslog --last 1d 2>/dev/null | tail -n 50)
+  echo "$log" | while read -r line; do
+    case "$line" in
+      *AWDL\ ON*) echo "📶 AWDL is ON — Discovery mode working." ;;
+      *Infra\ Priority*) echo "📡 Infra Priority traffic: $(echo "$line" | sed 's/.*Infra Priority/Infra Priority/')";;
+      *Tx:0\ Rx:0*) echo "⚠️ No data being transmitted — Watch may not be active or connected." ;;
+      *peer*) echo "👥 Peers seen: $line" ;;
+      *) [[ "$VERBOSE" == true ]] && echo "🔹 $line" ;;
+    esac
+  done
+}
+
 # Main menu loop
 while true; do
   echo ""
@@ -54,16 +80,7 @@ while true; do
     1)
       echo "🔍 Checking recent AutoUnlock state logs..."
       sleep 1
-      log_output=$(log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20)
-      if [[ "$VERBOSE" == true ]]; then echo "$log_output"; fi
-      state_line=$(echo "$log_output" | grep "AutoUnlock state:" | tail -n 1)
-      state=$(echo "$state_line" | grep -o "AutoUnlock state:[0-9]" | cut -d: -f2)
-      case "$state" in
-        0) echo "🟡 AutoUnlock state: 0 (Unknown)" ;;
-        1) echo "🟢 AutoUnlock state: 1 (Active)" ;;
-        2) echo "🔴 AutoUnlock state: 2 (Inactive — password required)" ;;
-        *) echo "❓ AutoUnlock state unknown or not found" ;;
-      esac
+      summarize_autounlock_logs
       ;;
 
     2)
@@ -82,13 +99,11 @@ while true; do
         case "$log_choice" in
           1)
             echo "🔍 AutoUnlock state logs:"
-            log=$(log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20)
-            echo "$log"
+            summarize_autounlock_logs
             ;;
           2)
             echo "📡 Bluetooth + AWDL logs:"
-            bt=$(log show --predicate 'eventMessage CONTAINS "bluetoothd" OR eventMessage CONTAINS "AWDL"' --style syslog --last 1d 2>/dev/null | tail -n 50)
-            echo "$bt"
+            summarize_bluetooth_awdl_logs
             ;;
           3)
             echo "📂 Trust file check:"
@@ -101,9 +116,8 @@ while true; do
             ;;
           5)
             echo "⏳ Running all diagnostics..."
-            log=$(log show --predicate 'eventMessage contains "AutoUnlock state"' --style syslog --last 1d 2>/dev/null | tail -n 20)
-            bt=$(log show --predicate 'eventMessage CONTAINS "bluetoothd" OR eventMessage CONTAINS "AWDL"' --style syslog --last 1d 2>/dev/null | tail -n 50)
-            if [[ "$VERBOSE" == true ]]; then echo "$log"; echo "$bt"; fi
+            summarize_autounlock_logs
+            summarize_bluetooth_awdl_logs
             for file in "${NEEDED_FILES[@]}"; do
               [ -f "$AUTO_UNLOCK_DIR/$file" ] && echo "✅ Found: $file" || echo "❌ Missing: $file"
             done
